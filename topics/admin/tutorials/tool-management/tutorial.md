@@ -118,6 +118,14 @@ Ephemeris can take care of this process. Let's practice this on a real workflow.
 >
 {: .hands_on }
 
+> ```bash
+> pip install ephemeris
+> wget https://training.galaxyproject.org/training-material/topics/sequence-analysis/tutorials/mapping/workflows/mapping.ga
+> workflow-to-tools -w mapping.ga -o workflow_tools.yml -l Mapping
+> ```
+> {: data-test="true"}
+{: .hidden}
+
 # Installing Tools
 
 Now that you have extracted a list of tools, let's install these on your Galaxy instance. In order to accomplish this, you will need:
@@ -147,6 +155,13 @@ There are two ways to install tools, depending on how you specify the tools to i
 >    {: .question}
 >
 {: .hands_on}
+
+> ```bash
+> shed-tools install -g https://$GALAXY_HOSTNAME -a $GALAXY_API_KEY --name bwa --owner devteam --section_label Mapping
+> ```
+> {: data-test="true"}
+{: .hidden}
+
 
 > ### {% icon tip %} Certificate issues
 >
@@ -191,6 +206,12 @@ For that, you can install from a YAML file:
 >    >> 
 >    >> (ii) On your Galaxy instance click on `Workflow`, then `Import`.  Paste the URL into the `Import Archived URL` field.
 {: .hands_on}
+
+> ```bash
+> shed-tools install -g https://$GALAXY_HOSTNAME -a $GALAXY_API_KEY -t workflow_tools.yml
+> ```
+> {: data-test="true"}
+{: .hidden}
 
 Occasionally the tool installation may fail due to network issues; if it does, just re-run the `shed-tools` installation process until it succeeds. This is a known issue the developers are working on.
 
@@ -244,6 +265,11 @@ This can give you some more confidence that things are working correctly. Oftent
 > The ephemeris `shed-tools test` command produces an output file `tool_test_output.json` with information about the test jobs that have run. Galaxyproject's [Planemo](https://github.com/galaxyproject/planemo) can be used to generate [test reports](https://planemo.readthedocs.io/en/latest/commands/test_reports.html?highlight=test_reports#test-reports-command) from tool_test_output.json in HTML and other formats.
 {: .tip}
 
+> ```bash
+> shed-tools test -g https://$GALAXY_HOSTNAME -a $GALAXY_API_KEY -t --name bamtools_filter --owner devteam
+> ```
+> {: data-test="true"}
+{: .hidden}
 
 # Obtaining a Tool List
 
