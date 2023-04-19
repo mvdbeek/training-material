@@ -23,7 +23,7 @@ requirements:
       - ansible
       - ansible-galaxy
       - pulsar
-subtopic: data
+subtopic: monitoring
 tags:
   - ansible
   - git-gat
@@ -219,23 +219,10 @@ First we need to add our new Ansible role to `requirements.yml`:
 >
 >    -->
 >
-> 6. Add the nginx routes
+> 7. We will add a template in `templates/nginx/sentry.j2` for a new nginx server section that responds to the sentry domain name.
 >
 >    {% raw %}
 >    ```diff
->    --- a/group_vars/galaxyservers.yml
->    +++ b/group_vars/galaxyservers.yml
->    @@ -196,6 +196,7 @@ nginx_servers:
->       - redirect-ssl
->     nginx_ssl_servers:
->       - galaxy
->    +  - sentry
->     nginx_enable_default_server: false
->     nginx_conf_http:
->       client_max_body_size: 1g
->    diff --git a/templates/nginx/sentry.j2 b/templates/nginx/sentry.j2
->    new file mode 100644
->    index 0000000..560edb8
 >    --- /dev/null
 >    +++ b/templates/nginx/sentry.j2
 >    @@ -0,0 +1,20 @@
@@ -259,23 +246,40 @@ First we need to add our new Ansible role to `requirements.yml`:
 >    +		proxy_set_header Upgrade $http_upgrade;
 >    +	}
 >    +}
->    {% endraw %}
 >    ```
+>    {% endraw %}
+>
+> 8. We will update `group_vars/galaxyservers.yml` so that the nginx template will be deployed.
+>    {% raw %}
+>    ```diff
+>    --- a/group_vars/galaxyservers.yml
+>    +++ b/group_vars/galaxyservers.yml
+>    @@ -196,6 +196,7 @@ nginx_servers:
+>       - redirect-ssl
+>     nginx_ssl_servers:
+>       - galaxy
+>    +  - sentry
+>     nginx_enable_default_server: false
+>     nginx_conf_http:
+>       client_max_body_size: 1g
+>    ```
+>    {% endraw %}
 >    {: data-commit="Add nginx server"}
 >
-> 7. Run the sentry playbook.
+> 9. Run the sentry playbook to deploy Sentry and the Galaxy playbook to update the nginx configuration.
 >
 >    > <code-in-title>Bash</code-in-title>
 >    > ```bash
->    > ansible-playbook sentry.yml
+>    > ansible-playbook sentry.yml galaxy.yml
 >    > ```
 >    > {: data-cmd="true"}
 >    {: .code-in}
 >
-> 8. Generate a project for Galaxy in Sentry
+> 10. Generate a project for Galaxy in Sentry
+> 
 >  Go to the domain you configured for your Sentry instance. You need to log in with the username and admin you've set up in `group_vars/sentryservers.yml`. Click "continue" on the next page. Click "Projects", "Create Project", "Python", select "I'll create my own alerts later", and set "galaxy" as the Project Name. You'll see your project dsn that will look like `https://b0022427ee5345a8ad4cb072c73e62f4@sentry.gat-N.eu.galaxy.training/2`. We will need this string to let Galaxy know where to send data to. To avoid requesting an additional certificate for communication between Galaxy and Sentry we've set up communication via localhost:9000, so you can manually change the @ portion to localhost:9000.
 >
-> 9. We will add the galaxy project dsn to the vault. Edit your `group_vars/secret.yml` and add the sentry dsn.
+> 9. We will add an associated admin password to the vault, do that now:
 >
 >    ><code-in-title>Bash</code-in-title>
 >    > ```
@@ -284,10 +288,21 @@ First we need to add our new Ansible role to `requirements.yml`:
 >    {: .code-in}
 >
 >    ```yaml
->    vault_galaxy_sentry_dsn: 'https://b0022427ee5345a8ad4cb072c73e62f4@localhost:9000/2'
+>    vault_sentry_password: 'some-super-secret-password'
 >    ```
 >
-> 9. Edit `group_vars/galaxyservers.yml` to reference the new vault secret:
+> 11. We will add the `galaxy` project dsn to the vault. Edit your `group_vars/secret.yml` and add the sentry dsn.
+>
+>    > <code-in-title>Bash</code-in-title>
+>    > ```
+>    > ansible-vault edit group_vars/secret.yml
+>    > ```
+>    {: .code-in}
+>
+>    ```yaml
+>    vault_galaxy_sentry_dsn: 'https://b0022427ee5345a8ad4cb072c73e62f4@localhost:9000/2'
+>    ```
+> 12. Edit `group_vars/galaxyservers.yml` to reference the new vault secret:
 >
 >    This will let Galaxy know that captured logs should be sent to our Sentry instance.
 >    We will also enable sending performance metrics to Sentry by setting the `sentry_traces_sample_rate` to `0.5`. This will send half of all transactions to Sentry. In a production environment you would reduce this to a smaller percentage of transactions.
@@ -309,7 +324,7 @@ First we need to add our new Ansible role to `requirements.yml`:
 >    {% endraw %}
 >    {: data-commit="Configure Galaxy to report to Sentry"}
 >
-> 10. Run the galaxy playbook.
+> 13. Run the Galaxy playbook.
 >
 >    > <code-in-title>Bash</code-in-title>
 >    > ```bash
@@ -322,7 +337,7 @@ First we need to add our new Ansible role to `requirements.yml`:
 
 ## Generate an error
 
-Galaxy has a built in route that intentionally generates and error.
+Galaxy has a built-in route that intentionally generates an error.
 Just visit:
 
 ```
@@ -458,7 +473,7 @@ In addition to sending logging errors to Sentry you can also collect failing too
 >     ```
 >    {% endraw %}
 >
-> > 4. Run the galaxy playbook.
+> > 4. Run the Galaxy playbook.
 >
 >    > <code-in-title>Bash</code-in-title>
 >    > ```bash
@@ -483,7 +498,7 @@ To generate a tool error, run the job properties testing tool and set the `failb
 It is also possible to report errors from the Pulsar server. You can either use the Galaxy project we created before in Sentry, or we can create a new project for Pulsar. We recommend creating a separate Pulsar project. Since the Pulsar server runs on a remote VM for this to work you need a valid certificate for the Sentry domain and you cannot use localhost.
 
 > <hands-on-title>Add Sentry connection to Pulsar</hands-on-title>
-> 1. Create a new dsn by creating a new pulsar project in Sentry.
+> 1. Create a new dsn by creating a new `pulsar` project in Sentry.
 > 2. We will add the project dsn to the vault. Edit your `group_vars/secret.yml` and add the sentry dsn.
 >
 >    ><code-in-title>Bash</code-in-title>
@@ -495,7 +510,7 @@ It is also possible to report errors from the Pulsar server. You can either use 
 >    ```yaml
 >    vault_pulsar_sentry_dsn: 'https://f2a8a00d30224c2c9800a8f79194a32a@{{ groups['sentryservers'][0] }}/3'
 >    ```
-> 3. Add the sentry dsn to the pulsar group variables.
+> 3. Add the sentry dsn to the Pulsar group variables.
 >    {% raw %}
 >    ```diff
 >    --- a/group_vars/pulsarservers.yml
@@ -511,7 +526,7 @@ It is also possible to report errors from the Pulsar server. You can either use 
 >    ```
 >    {% endraw %}
 >
-> > 4. Run the pulsar playbook.
+> > 4. Run the Pulsar playbook.
 >
 >    > <code-in-title>Bash</code-in-title>
 >    > ```bash
